@@ -61,7 +61,7 @@ commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
     execvp(cmd->name, cmd->argv);
 
     // Error
-    printf("`%s` exec error: %d, %s\n", cmd->name, errno, strerror(errno));
+    printf("`%s` exec error (%d): %s\n", cmd->name, errno, strerror(errno));
     exit(EXIT_FAILURE);
 
   default:  // Parent
@@ -80,6 +80,7 @@ void toysh_run(const commandLine* cline){
   commandHandle* current = NULL;
   while(cmd != NULL){
     commandHandle* next = toysh_command_run(current, cmd);
+    if(! next) break;  // Failed to run current command.
     if(! head) head = next;
     cmd = cmd->next;
     current = next;
