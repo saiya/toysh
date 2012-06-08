@@ -77,7 +77,7 @@ command* command_parse(const char* str, commandToken** nextToken){
 
   struct command* command = (struct command*)malloc(sizeof(struct command));
   command->next = NULL;
-  command->name = strndup(t->str_start, t->str_next - t->str_start);
+  command->name = strndup(t->str_start, t->str_end - t->str_start);
 
   command->argc = 1;
   size_t argv_size = 1;
@@ -94,7 +94,7 @@ command* command_parse(const char* str, commandToken** nextToken){
       command->argv = realloc(command->argv, (argv_size + 1) * sizeof(char*));
     }
 
-    command->argv[command->argc] = strndup(t->str_start, t->str_next - t->str_start);
+    command->argv[command->argc] = strndup(t->str_start, t->str_end - t->str_start);
     command->argc++;
 
     commandToken* oldToken = *nextToken;
@@ -117,25 +117,40 @@ commandToken* readToken(const char* str){
   switch(*str){
   case '|':
     result->type = T_Pipe;
+    result->str_end = str;
     result->str_next = str + 1;
     break;
 
   default:
     result->type = T_String;
+    
+    char quote = '\0';
+    switch(*result->str_start){
+    case '\'':
+      quote = '\'';
+      break;
+    case '\"':
+      quote = '\"';
+      break;
+    }
+    if(quote != '\0'){
+      result->str_start++;
+      str = result->str_start;
+    }
+
     while(*str != '\0'){
-      int eos = 0;
-      switch(*result->str_start){
-      case '\"':
-	if(*str == '\"') eos = 1;
-	break;
-      case '\'':
-	if(*str == '\'') eos = 1;
-	break;
-      default:
-	if(isspace(*str)) eos = 1;
-	break;
+      if(quote == '\0'){
+	if(isspace(*str)){
+	  result->str_end = str;
+	  break;
+	}
+      }else{
+	if(*str == quote){
+	  result->str_end = str;
+	  str++;
+	  break;
+	}
       }
-      if(eos) break;
 
       str++;
     }

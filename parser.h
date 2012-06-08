@@ -39,6 +39,8 @@ typedef enum commandTokenType{
 } commandTokenType;
 typedef struct commandToken{
   const char* str_start;
+  /** strlen(token) == (str_end - str_start); str_end points next of last char. */
+  const char* str_end;
   const char* str_next;
   
   commandTokenType type;
