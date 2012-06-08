@@ -24,9 +24,14 @@ typedef struct dictionary{
    */
   void (*set)(struct dictionary* this, const char* key, size_t keyLen, const char* val, size_t valLen);
 
+  /** 
+   * @param keyLen  Length of key or -1 (use strlen+1).
+   * @return 0: removed, not0: not found
+   */
+  int (*remove)(const struct dictionary* this, const char* key, size_t keyLen);
+
   /** Free all memory. */
   void (*free)(struct dictionary* this);
 } dictionary;
-
 
 dictionary* dictionary_new();

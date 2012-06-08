@@ -54,6 +54,11 @@ pair* pair_new(hash_t hash, const char* key, size_t keyLen, const char* val, siz
   result->next = NULL;
   return result;
 }
+void pair_free(pair* this){
+  free(this->key);
+  free(this->val);
+  free(this);
+}
 void pair_set(pair* this, const char* val, size_t valLen){
   if(valLen > this->valLen){
     // Don't realloc(..., 0) because it returns NULL.
@@ -71,22 +76,59 @@ typedef struct dictImpl{
 } dictImpl;
 
 size_t _dic_slotOf(dictImpl* this, hash_t hash){ return hash % this->slotCount; }
-const pair* _dic_lookup(dictImpl* this, const char* key, size_t keyLen){
+pair* _dic_lookup(dictImpl* this, const char* key, size_t keyLen, pair** prev){
   hash_t h = hash(key, keyLen);
-  for(pair* cur = *(this->slots + _dic_slotOf(this, h)); cur; cur = cur->next){
-    if(cur->hash != h) continue;
-    if(cur->keyLen != keyLen) continue;
-    if(memcmp(cur->key, key, keyLen) != 0) continue;
-    return cur;
+  if(prev) *prev = NULL;
+  for(pair* cur = *(this->slots + _dic_slotOf(this, h)); cur; ){
+    if(
+       (cur->hash == h)
+       && (cur->keyLen == keyLen)
+       && (memcmp(cur->key, key, keyLen) == 0)
+    ){
+      return cur;
+    }
+
+    if(prev) *prev = cur;
+    cur = cur->next;
   }
   return NULL;  // Not found  
+}
+void _dic_resize(dictImpl* this, size_t slotCount){
+  pair** heads = malloc(sizeof(pair*) * slotCount);
+  memset(heads, 0, slotCount);
+  pair** tails = malloc(sizeof(pair*) * slotCount);
+  memset(tails, 0, slotCount);
+  
+  size_t oldsc = this->slotCount;
+  pair** oldslots = this->slots;
+  this->slotCount = slotCount;
+  this->slots = heads;
+
+  for(size_t s = 0; s < oldsc; s++){
+    for(pair* p = *(oldslots + s); p; ){
+      size_t dest = _dic_slotOf(this, p->hash);
+      if(! *(heads + dest)){
+	*(tails + dest) = *(heads + dest) = p;
+      }else{
+	(*(tails + dest))->next = p;
+	*(tails + dest) = p;
+      }
+
+      pair* next = p->next;
+      p->next = NULL;
+      p = next;
+    }
+  }
+  
+  free(oldslots);
+  free(tails);
 }
 
 char* dic_dup(const struct dictionary* thisD, const char* key, size_t keyLen){
   dictImpl* this = (dictImpl*)thisD;
   if(keyLen == -1) keyLen = strlen(key) + 1;
   
-  const pair* p = _dic_lookup(this, key, keyLen);
+  const pair* p = _dic_lookup(this, key, keyLen, NULL);
   if(! p) return NULL;
   
   char* result = malloc(p->valLen);
@@ -97,7 +139,7 @@ int dic_get(const struct dictionary* thisD, const char* key, size_t keyLen, cons
   dictImpl* this = (dictImpl*)thisD;
   if(keyLen == -1) keyLen = strlen(key) + 1;
   
-  const pair* p = _dic_lookup(this, key, keyLen);
+  const pair* p = _dic_lookup(this, key, keyLen, NULL);
   if(! p){
     if(val) *val = NULL;
     if(valLen) *valLen = -1;
@@ -136,6 +178,23 @@ void dic_set(struct dictionary* thisD, const char* key, size_t keyLen, const cha
   
   last->next = pair_new(h, key, keyLen, val, valLen);
 }
+int dic_remove(const struct dictionary* thisD, const char* key, size_t keyLen){
+  dictImpl* this = (dictImpl*)thisD;
+  if(keyLen == -1) keyLen = strlen(key) + 1;
+  
+  pair* prev;
+  pair* p = _dic_lookup(this, key, keyLen, &prev);
+  if(! p) return 0;
+  
+  if(prev){
+    prev->next = p->next;
+  }else{
+    *(this->slots + _dic_slotOf(this, p->hash)) = p->next;
+  }
+  
+  pair_free(p);
+  return 1;
+}
 
 void dic_free(struct dictionary* thisD){
   dictImpl* this = (dictImpl*)thisD;
@@ -144,9 +203,7 @@ void dic_free(struct dictionary* thisD){
     pair* cur = *(this->slots + s);
     while(cur){
       pair* next = cur->next;
-      free(cur->key);
-      free(cur->val);
-      free(cur);
+      pair_free(cur);
       cur = next;
     }
   }
@@ -161,6 +218,7 @@ dictionary* dictionary_new(size_t slots){
   d->public.set = &dic_set;
   d->public.dup = &dic_dup;
   d->public.get = &dic_get;
+  d->public.remove = &dic_remove;
   d->public.free = &dic_free;
 
   d->slotCount = 7;

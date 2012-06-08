@@ -10,6 +10,7 @@
 #include <readline/readline.h>
 #include "toysh.h"
 #include "parser.h"
+#include "dictionary.h"
 
 
 void commandHandle_freeSucc(commandHandle* this){

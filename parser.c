@@ -9,14 +9,21 @@ void commandLine_free(commandLine* this){
   free(this->str);
   while(cmd){
     command* next = cmd->next;
+
+    free(cmd->name);
     for(size_t i = 0; i < cmd->argc; i++){
       char* arg = *(cmd->argv + i);
       free(arg);
     }
     free(cmd->argv);
+
+    cmd->name = NULL;
+    cmd->argv = NULL;  // To detect invalid access.
     free(cmd);
+
     cmd = next;
   }
+  this->free = NULL;  // Prevent double-free.
   free(this);
 }
 commandLine* commandLine_alloc(){
