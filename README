@@ -1,0 +1,40 @@
+toysh: Toy shell
+
+- Licence: GPLv2  (using GNU readline)
+- Author: saiya
+
+
+=== Example ===
+
+toysh % ls
+core  makeAndRun.sh  parser.c  parser.h  toysh  toysh.c  toysh.h
+toysh % ls -la
+合計 1284
+drwxr-xr-x 3 saiya saiya    4096 2012-06-08 19:21 .
+drwxr-xr-x 9 saiya saiya    4096 2012-06-08 14:22 ..
+drwxr-xr-x 8 saiya saiya    4096 2012-06-08 19:20 .git
+-rw------- 1 saiya saiya 2244608 2012-06-08 16:59 core
+-rwxr-xr-x 1 saiya saiya     110 2012-06-08 17:58 makeAndRun.sh
+-rw-r--r-- 1 saiya saiya    3325 2012-06-08 17:06 parser.c
+-rw-r--r-- 1 saiya saiya     834 2012-06-08 17:16 parser.h
+-rwxr-xr-x 1 saiya saiya   26876 2012-06-08 19:21 toysh
+-rw-r--r-- 1 saiya saiya    2740 2012-06-08 19:19 toysh.c
+-rw-r--r-- 1 saiya saiya     595 2012-06-08 18:01 toysh.h
+toysh % ls -la | wc
+     11      82     581
+toysh % 
+
+
+=== Purpose ===
+
+To pass the boring time.
+
+
+=== Feature ===
+
+- Command execution
+- Quotation: 'one argument which contains space'
+- Pipe: `ls | wc`
+- All GNU readline features
+-- Backlog (with up/down key)
+-- Cursor operations (C-a, C-e etc.)
