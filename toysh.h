@@ -16,6 +16,9 @@ typedef struct commandHandle{
    */
   int (*wait)(struct commandHandle* this);
 
+  /** Free this and nexts (not prevs). */
+  void (*freeSucc)(struct commandHandle* this);
+
   struct commandHandle* prev;
   struct commandHandle* next;
 } commandHandle;

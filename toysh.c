@@ -12,6 +12,14 @@
 #include "parser.h"
 
 
+void commandHandle_freeSucc(commandHandle* this){
+  commandHandle* current = this;
+  while(current){
+    commandHandle* next = current->next;
+    free(current);
+    current = next;
+  }
+}
 int commandHandle_wait(commandHandle* this){
   int result;
   waitpid(this->pid, &result, 0);
@@ -22,6 +30,7 @@ commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
   commandHandle* result = malloc(sizeof(commandHandle));
   result->stdout_reader = -1;
   result->wait = &commandHandle_wait;
+  result->freeSucc = &commandHandle_freeSucc;
   result->prev = prev;
   if(prev) prev->next = result;
   result->next = NULL;
@@ -80,7 +89,7 @@ void toysh_run(const commandLine* cline){
     current->wait(current);
   }
   
-  // TODO: free the commandHandle chain.
+  head->freeSucc(head);
 }
 
 
