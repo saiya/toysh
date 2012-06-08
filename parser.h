@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unistd.h>
+
 typedef struct commandLine{
   char* str;
 
@@ -8,10 +10,17 @@ typedef struct commandLine{
   void (*free)(struct commandLine* this);
 } commandLine;
 
+typedef enum commandPipeType{
+  NoPipe,
+  NormalPipe,
+} commandPipeType;
+
 typedef struct command{
   char* name;
   int argc;
   char** argv;
+
+  commandPipeType pipeType;
   struct command* next;
 } command;
 
@@ -21,6 +30,7 @@ typedef struct command{
  *             This function will copy given string.
  */
 commandLine* commandLine_parse(const char* str);
+
 
 
 typedef enum commandTokenType{

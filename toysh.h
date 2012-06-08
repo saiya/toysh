@@ -1,23 +1,25 @@
-typedef struct commandLine{
-  char* str;
+#pragma once
 
-  struct command* command;
-
-  void (*free)(struct commandLine* this);
-} commandLine;
-
-typedef struct command{
-  char* name;
-  int argc;
-  char** argv;
-  struct command* next;
-} command;
+#include "parser.h"
 
 
-/** Parse command line.
- * @param str  Command line.
- *             This function will copy given string.
- */
-commandLine* commandLine_parse(const char* str);
+typedef struct commandHandle{
+  pid_t pid;
+  
+  /** If has successor, stdout will be piped.
+   * -1 is default.
+   */
+  int stdout_reader;
+
+  /** Wait until process exit.
+   * @return int  Process return code
+   */
+  int (*wait)(struct commandHandle* this);
+
+  struct commandHandle* prev;
+  struct commandHandle* next;
+} commandHandle;
+
+commandHandle* toysh_command_run(commandHandle* prev, const command* cmd);
 void toysh_run(const commandLine* cline);
 void toysh();

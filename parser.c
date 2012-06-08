@@ -56,6 +56,7 @@ commandLine* commandLine_parse(const char* str){
     
     last->next = command_parse(nextToken->str_next, &nextToken);
     last = last->next;
+    last->pipeType = NormalPipe;
   }
   
   return result;
