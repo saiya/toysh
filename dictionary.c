@@ -1,7 +1,13 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "dictionary.h"
+
+
+// Resize() trigger at: stat.elements > DEFAULT_LOAD_FACTOR * stat.buckets
+#define DEFAULT_LOAD_FACTOR (0.9f)
+
 
 #if __x86_64__
   typedef u_int64_t hash_t;
@@ -70,13 +76,17 @@ void pair_set(pair* this, const char* val, size_t valLen){
 
 typedef struct dictImpl{
   struct dictionary public;
+  struct dictionaryStat stat;
   
   size_t slotCount;
   pair** slots;
-} dictImpl;
 
+  size_t resizeThreshold;
+} dictImpl;
 size_t _dic_slotOf(dictImpl* this, hash_t hash){ return hash % this->slotCount; }
 pair* _dic_lookup(dictImpl* this, const char* key, size_t keyLen, pair** prev){
+  this->stat.lookups++;
+
   hash_t h = hash(key, keyLen);
   if(prev) *prev = NULL;
   for(pair* cur = *(this->slots + _dic_slotOf(this, h)); cur; ){
@@ -88,12 +98,16 @@ pair* _dic_lookup(dictImpl* this, const char* key, size_t keyLen, pair** prev){
       return cur;
     }
 
+    this->stat.lookupChains++;
     if(prev) *prev = cur;
     cur = cur->next;
   }
   return NULL;  // Not found  
 }
 void _dic_resize(dictImpl* this, size_t slotCount){
+  this->stat.resizes++;
+  this->resizeThreshold = (size_t)(DEFAULT_LOAD_FACTOR * slotCount);
+
   pair** heads = malloc(sizeof(pair*) * slotCount);
   memset(heads, 0, slotCount);
   pair** tails = malloc(sizeof(pair*) * slotCount);
@@ -122,6 +136,12 @@ void _dic_resize(dictImpl* this, size_t slotCount){
   
   free(oldslots);
   free(tails);
+}
+void _dic_resize_auto(dictImpl* this){
+  if(this->resizeThreshold >= this->stat.elements) return;
+  
+  size_t buckets = this->slotCount * 2;
+  _dic_resize(this, buckets);
 }
 
 char* dic_dup(const struct dictionary* thisD, const char* key, size_t keyLen){
@@ -160,15 +180,28 @@ void dic_set(struct dictionary* thisD, const char* key, size_t keyLen, const cha
   
   hash_t h = hash(key, keyLen);
   size_t s = _dic_slotOf(this, h);
-  
+
+  // set is a kind of lookup
+  this->stat.lookups++;
+
+  // ADD (no hash collision)
   pair* head = *(this->slots + s);
   if(! head){
+    this->stat.elements++;
     *(this->slots + s) = pair_new(h, key, keyLen, val, valLen);
+
+    // _dic_resize_auto() isn't needed here.
+    // Because we used vacant slot!
     return;
   }
   
+  // UPDATE exsiting key
   pair* last = NULL;
+  this->stat.lookupChains--; // Followin loop too increments
   for(pair* cur = head; cur; cur = cur->next){
+    // set is a kind of lookup
+    this->stat.lookupChains++;
+
     last = cur;
 
     if(cur->hash != h) continue;
@@ -179,7 +212,10 @@ void dic_set(struct dictionary* thisD, const char* key, size_t keyLen, const cha
     return;
   }
   
+  // ADD (hash collision)
+  this->stat.elements++;
   last->next = pair_new(h, key, keyLen, val, valLen);
+  _dic_resize_auto(this);
 }
 int dic_remove(const struct dictionary* thisD, const char* key, size_t keyLen){
   dictImpl* this = (dictImpl*)thisD;
@@ -195,8 +231,15 @@ int dic_remove(const struct dictionary* thisD, const char* key, size_t keyLen){
     *(this->slots + _dic_slotOf(this, p->hash)) = p->next;
   }
   
+  this->stat.elements--;
   pair_free(p);
   return 1;
+}
+
+void dic_getStat(const dictionary* thisD, dictionaryStat* stat){
+  dictImpl* this = (dictImpl*)thisD;
+  *stat = this->stat;
+  stat->buckets = this->slotCount;
 }
 
 void dic_free(struct dictionary* thisD){
@@ -216,17 +259,43 @@ void dic_free(struct dictionary* thisD){
   this->public.free = NULL;  // To prevent double-free.
   free(this);
 }
+
+char* dicStat_toString(const dictionaryStat* this){
+  char* result;
+  if(asprintf(
+    &result,
+    "%zd elements / %zd buckets, Lookup: %u (chain: %u), Resize: %u",
+    this->elements,
+    this->buckets,
+    this->lookups,
+    this->lookupChains,
+    this->resizes
+  ) == -1){
+    // Value of result is undefined!
+    return NULL;
+  }
+  return result;
+}
+
 dictionary* dictionary_new(size_t slots){
   dictImpl* d = malloc(sizeof(dictImpl));
-  d->public.set = &dic_set;
-  d->public.dup = &dic_dup;
-  d->public.get = &dic_get;
-  d->public.remove = &dic_remove;
-  d->public.free = &dic_free;
 
   d->slotCount = 7;
   d->slots = malloc(sizeof(pair*) * d->slotCount);
   memset(d->slots, 0, sizeof(pair*) * d->slotCount);
+
+  d->stat.lookups = 0;
+  d->stat.lookupChains = 0;
+  d->stat.resizes = 0;
+  d->stat.buckets = -1;  // getStat() will update this.
+  d->stat.toString = &dicStat_toString;
   
+  d->public.set = &dic_set;
+  d->public.dup = &dic_dup;
+  d->public.get = &dic_get;
+  d->public.remove = &dic_remove;
+  d->public.getStat = &dic_getStat;
+  d->public.free = &dic_free;
+
   return &d->public;
 }

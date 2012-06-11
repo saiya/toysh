@@ -1,5 +1,17 @@
 #pragma once
 
+typedef struct dictionaryStat{
+  unsigned int lookups;
+  unsigned int lookupChains;
+  
+  unsigned int resizes;
+
+  size_t elements;
+  size_t buckets;
+
+  char* (*toString)(const struct dictionaryStat* this);
+} dictionaryStat;
+
 /** char* to char* dictionary. */
 typedef struct dictionary{
 
@@ -29,6 +41,9 @@ typedef struct dictionary{
    * @return 0: removed, not0: not found
    */
   int (*remove)(const struct dictionary* this, const char* key, size_t keyLen);
+
+  /**  */
+  void (*getStat)(const struct dictionary* this, dictionaryStat* stat);
 
   /** Free all memory. */
   void (*free)(struct dictionary* this);

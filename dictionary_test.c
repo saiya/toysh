@@ -127,6 +127,16 @@ void test_random(){
     }
     free(tmpStr);
   }
+
+  {
+    dictionaryStat stat;
+    dict->getStat(dict, &stat);
+    char* statStr = stat.toString(&stat);
+    puts("");
+    printf("Stat: %s\n", statStr);
+    free(statStr);
+  }
+
   for(size_t i = 0; i < entries; i++){
     myString key = *(keys + i);
     myString val = *(vals + i);
