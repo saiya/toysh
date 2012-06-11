@@ -129,9 +129,9 @@ char* dic_dup(const struct dictionary* thisD, const char* key, size_t keyLen){
   if(keyLen == -1) keyLen = strlen(key) + 1;
   
   const pair* p = _dic_lookup(this, key, keyLen, NULL);
-  if(! p) return NULL;
+  if(p == NULL) return NULL;
   
-  char* result = malloc(p->valLen);
+  char* result = malloc((p->valLen) ? p->valLen : 1);
   memcpy(result, p->val, p->valLen);
   return result;
 }
@@ -140,14 +140,14 @@ int dic_get(const struct dictionary* thisD, const char* key, size_t keyLen, char
   if(keyLen == -1) keyLen = strlen(key) + 1;
   
   const pair* p = _dic_lookup(this, key, keyLen, NULL);
-  if(! p){
+  if(p == NULL){
     if(val) *val = NULL;
     if(valLen) *valLen = -1;
     return 0;
   }
 
   if(val){
-    *val = malloc(p->valLen);
+    *val = malloc((p->valLen) ? p->valLen : 1);
     memcpy(*val, p->val, p->valLen);
   }
   if(valLen) *valLen = p->valLen;

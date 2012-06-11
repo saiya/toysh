@@ -7,8 +7,9 @@ OBJS_TOYSH	= toysh.o $(OBJS)
 OBJS_TEST	= toysh_test.o $(OBJS) dictionary_test.o
 
 CC	= gcc
+#	-lefence	# Use Valgrind to detect memory leakage or access violation
 FLAGS	= \
-	-lreadline -lefence \
+	-lreadline \
 	-Wall \
 	-g -ggdb \
 	-std=c99 -D_GNU_SOURCE
@@ -18,6 +19,7 @@ FLAGS_TEST = $(FLAGS) -lcunit
 	$(CC) $(FLAGS) -c $<
 
 all: $(OUT_TOYSH) $(OUT_TEST)
+	echo "To run tests (with Valgrind): make && valgrind --leak-check=yes ./toysh_test"
 
 $(OUT_TOYSH): toysh.o $(OBJS_TOYSH)
 	$(CC) $(FLAGS) -o $@ $(OBJS_TOYSH)

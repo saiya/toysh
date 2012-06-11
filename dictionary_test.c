@@ -18,6 +18,7 @@ typedef struct myString{
   size_t len;  // Contains \0
   char* buff;
 } myString;
+void myString_free(myString* str){ free(str->buff); }
 
 #define test_random_strlen_max (100)
 #define test_random_entry_min (100)
@@ -61,24 +62,39 @@ void test_random(){
   size_t entries = (size_t)((rand_r(&rnd) / (float)RAND_MAX) * (test_random_entry_max - test_random_entry_min)) + test_random_entry_min;
   // printf("\tEntries: %zd\n", entries);
 
-  size_t nullKey_at = (rand_r(&rnd) * entries) / RAND_MAX;
   size_t nullVal_at = (rand_r(&rnd) * entries) / RAND_MAX;
   size_t nullBoth_at = (rand_r(&rnd) * entries) / RAND_MAX;
   myString* keys = malloc(entries * sizeof(myString));
   myString* vals = malloc(entries * sizeof(myString));
   for(size_t i = 0; i < entries; i++){
-    if(i == nullKey_at){
-      *(keys + i) = test_random_newRandStr(&rnd, 0);
-      *(vals + i) = test_random_newRandStr(&rnd, -1);
-    }else if(i == nullVal_at){
-      *(keys + i) = test_random_newRandStr(&rnd, -1);
-      *(vals + i) = test_random_newRandStr(&rnd, 0);
-    }else if(i == nullBoth_at){
-      *(keys + i) = test_random_newRandStr(&rnd, 0);
-      *(vals + i) = test_random_newRandStr(&rnd, 0);
-    }else{
-      *(keys + i) = test_random_newRandStr(&rnd, -1);
-      *(vals + i) = test_random_newRandStr(&rnd, -1);
+    while(1){
+      if(i == nullVal_at){
+	*(keys + i) = test_random_newRandStr(&rnd, -1);
+	*(vals + i) = test_random_newRandStr(&rnd, 0);
+      }else if(i == nullBoth_at){
+	*(keys + i) = test_random_newRandStr(&rnd, 0);
+	*(vals + i) = test_random_newRandStr(&rnd, 0);
+      }else{
+	*(keys + i) = test_random_newRandStr(&rnd, -1);
+	*(vals + i) = test_random_newRandStr(&rnd, -1);
+      }
+      
+      // Retry if the key duplicates
+      int unique = 1;
+      for(size_t j = 0; j < i; j++){
+	if(
+	   ((keys + i)->len == (keys + j)->len)
+	   && (memcmp((keys + i)->buff, (keys + j)->buff, (keys + i)->len) == 0)
+	){
+	  unique = 0;
+	  break;
+	}
+      }
+      if(unique) break;
+
+      // Before retry...
+      myString_free(keys + i);
+      myString_free(vals + i);
     }
   }
   
@@ -90,7 +106,7 @@ void test_random(){
     myString key = *(keys + i);
     myString val = *(vals + i);
 
-    // Should be not found
+    // Should not be found
     CU_ASSERT(dict->dup(dict, key.buff, key.len) == NULL);
     CU_ASSERT(dict->get(dict, key.buff, key.len, NULL, NULL) == 0);
     
@@ -98,12 +114,38 @@ void test_random(){
     
     // Should be found
     tmpStr = dict->dup(dict, key.buff, key.len);
-    CU_ASSERT(tmpStr == NULL);
+    CU_ASSERT(strncmp(tmpStr, val.buff, val.len) == 0);
     free(tmpStr);
-    CU_ASSERT(dict->get(dict, key.buff, key.len, &tmpStr, &tmpLen) == 0);
+    CU_ASSERT(dict->get(dict, key.buff, key.len, &tmpStr, &tmpLen) != 0);
     CU_ASSERT(tmpLen == val.len);
-    CU_ASSERT(strncmp(tmpStr, val.buff, val.len));
+    CU_ASSERT(strncmp(tmpStr, val.buff, val.len) == 0);
+    if(strncmp(tmpStr, val.buff, val.len) != 0){
+      if(val.printable){
+	printf("\tExpected: \"%s\"\n", val.buff);
+	printf("\tActual: \"%s\"\n", tmpStr);
+      }
+    }
+    free(tmpStr);
+  }
+  for(size_t i = 0; i < entries; i++){
+    myString key = *(keys + i);
+    myString val = *(vals + i);
+
+    // Sould be found
+    CU_ASSERT(dict->get(dict, key.buff, key.len, NULL, NULL) != 0);
+
+    dict->remove(dict, key.buff, key.len);
+    
+    // Should not be found
+    CU_ASSERT(dict->dup(dict, key.buff, key.len) == NULL);
+    CU_ASSERT(dict->get(dict, key.buff, key.len, NULL, NULL) == 0);
   }
   
   dict->free(dict);
+  for(size_t i = 0; i < entries; i++){
+    myString_free(keys + i);
+    myString_free(vals + i);
+  }
+  free(keys);
+  free(vals);
 }
