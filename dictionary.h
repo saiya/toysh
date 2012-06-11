@@ -15,7 +15,7 @@ typedef struct dictionary{
    *                When the key isn't found, this will copy -1 into here.
    * @return 0: not found, not0: found.
    */
-  int (*get)(const struct dictionary* this, const char* key, size_t keyLen, const char** val, size_t* valLen);
+  int (*get)(const struct dictionary* this, const char* key, size_t keyLen, char** val, size_t* valLen);
 
   /** Set the copy of val as the key.
    *  Dictionary will copy both key and val.

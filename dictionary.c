@@ -43,11 +43,11 @@ pair* pair_new(hash_t hash, const char* key, size_t keyLen, const char* val, siz
   pair* result = malloc(sizeof(pair));
   result->hash = hash;
 
-  result->key = malloc(keyLen);
+  result->key = malloc(keyLen ? keyLen : 1);
   memcpy(result->key, key, keyLen);
   result->keyLen = keyLen;
 
-  result->val = malloc(valLen);
+  result->val = malloc(valLen ? valLen : 1);
   memcpy(result->val, val, valLen);
   result->valLen = valLen;
 
@@ -135,7 +135,7 @@ char* dic_dup(const struct dictionary* thisD, const char* key, size_t keyLen){
   memcpy(result, p->val, p->valLen);
   return result;
 }
-int dic_get(const struct dictionary* thisD, const char* key, size_t keyLen, const char** val, size_t* valLen){
+int dic_get(const struct dictionary* thisD, const char* key, size_t keyLen, char** val, size_t* valLen){
   dictImpl* this = (dictImpl*)thisD;
   if(keyLen == -1) keyLen = strlen(key) + 1;
   
@@ -146,7 +146,10 @@ int dic_get(const struct dictionary* thisD, const char* key, size_t keyLen, cons
     return 0;
   }
 
-  if(val) *val = p->val;
+  if(val){
+    *val = malloc(p->valLen);
+    memcpy(*val, p->val, p->valLen);
+  }
   if(valLen) *valLen = p->valLen;
   return 1;
 }
