@@ -48,12 +48,12 @@ commandLine* commandLine_parse(const char* str){
   result->str = (char*)malloc(str_end - str_start + 1);
   strcpy(result->str, str_start);
 
-  commandToken* nextToken;
+  commandToken nextToken;
   command* last = command_parse(result->str, &nextToken);
   result->command = last;
   
-  while(nextToken){
-    switch(nextToken->type){
+  while(nextToken.type != T_NULL){
+    switch(nextToken.type){
     case T_Pipe: break;
     default:
       puts("Invalid sequence...");
@@ -61,7 +61,7 @@ commandLine* commandLine_parse(const char* str){
       return NULL;
     }
     
-    last->next = command_parse(nextToken->str_next, &nextToken);
+    last->next = command_parse(nextToken.str_next, &nextToken);
     last = last->next;
     last->pipeType = NormalPipe;
   }
@@ -70,21 +70,23 @@ commandLine* commandLine_parse(const char* str){
 }
 
 
-command* command_parse(const char* str, commandToken** nextToken){
-  *nextToken = NULL;
+command* command_parse(const char* str, commandToken* nextToken){
+  nextToken->type = T_NULL;
 
-  commandToken* t = readToken(str);
-  if(! t){
-    return NULL;
-  }
+  commandToken t_;
+  if(! readToken(str, &t_)) return NULL;
+  commandToken* t = &t_;
+
   if(t->type != T_String){
     puts("Parse error.");
     return NULL;
   }
 
   struct command* command = (struct command*)malloc(sizeof(struct command));
+  command->type = EXEC;
   command->next = NULL;
   command->name = strndup(t->str_start, t->str_end - t->str_start);
+  command->pipeType = NoPipe;
 
   command->argc = 1;
   size_t argv_size = 1;
@@ -92,8 +94,8 @@ command* command_parse(const char* str, commandToken** nextToken){
   command->argv[0] = strdup(command->name);
   
   while(1){
-    t = readToken(t->str_next);
-    if(! t) break;
+    if(! readToken(t->str_next, &t_)) break;
+    t = &t_;
     if(t->type != T_String) break;
  
     if(command->argc <= argv_size){
@@ -103,24 +105,22 @@ command* command_parse(const char* str, commandToken** nextToken){
 
     command->argv[command->argc] = strndup(t->str_start, t->str_end - t->str_start);
     command->argc++;
-
-    commandToken* oldToken = *nextToken;
-    free(oldToken);
   }
-  *nextToken = t;
+  *nextToken = *t;
   command->argv[command->argc] = NULL;
 
   return command;
 }
 
 
-commandToken* readToken(const char* str){
+int readToken(const char* str, commandToken* result){
   while(isspace(*str)){ str++; }
-  if(*str == '\0') return NULL;
+  if(*str == '\0'){
+    result->type = T_NULL;
+    return 0;
+  }
 
-  commandToken* result = (commandToken*)malloc(sizeof(commandToken));
   result->str_start = str;
-
   switch(*str){
   case '|':
     result->type = T_Pipe;
@@ -145,8 +145,12 @@ commandToken* readToken(const char* str){
       str = result->str_start;
     }
 
-    while(*str != '\0'){
-      if(quote == '\0'){
+    // Walk toward str_end
+    while(1){
+      if(*str == '\0'){
+	result->str_end = str;
+	break;
+      }else if(quote == '\0'){
 	if(isspace(*str)){
 	  result->str_end = str;
 	  break;
@@ -164,5 +168,5 @@ commandToken* readToken(const char* str){
     result->str_next = str;
     break;
   }
-  return result;
+  return 1;
 }

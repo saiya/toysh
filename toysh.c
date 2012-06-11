@@ -28,6 +28,11 @@ int commandHandle_wait(commandHandle* this){
 }
 
 commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
+  if(cmd->type != EXEC){
+    puts("Unknown type of command.");
+    return;
+  }
+
   commandHandle* result = malloc(sizeof(commandHandle));
   result->stdout_reader = -1;
   result->wait = &commandHandle_wait;

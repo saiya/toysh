@@ -14,8 +14,14 @@ typedef enum commandPipeType{
   NoPipe,
   NormalPipe,
 } commandPipeType;
-
+typedef enum commandType{
+  EXEC,
+  //  ASSIGN,
+  //  EXPORT,
+} commandType;
 typedef struct command{
+  commandType type;
+  
   char* name;
   int argc;
   char** argv;
@@ -36,6 +42,7 @@ commandLine* commandLine_parse(const char* str);
 typedef enum commandTokenType{
   T_String,
   T_Pipe,
+  T_NULL,
 } commandTokenType;
 typedef struct commandToken{
   const char* str_start;
@@ -45,5 +52,5 @@ typedef struct commandToken{
   
   commandTokenType type;
 } commandToken;
-commandToken* readToken(const char* str);
-command* command_parse(const char* str, commandToken** nextToken);
+int readToken(const char* str, commandToken* t);
+command* command_parse(const char* str, commandToken* nextToken);
