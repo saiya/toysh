@@ -1,56 +1,44 @@
 #pragma once
 
-#include <unistd.h>
-
-typedef struct commandLine{
-  char* str;
-
-  struct command* command;
-
-  void (*free)(struct commandLine* this);
-} commandLine;
-
-typedef enum commandPipeType{
-  NoPipe,
-  NormalPipe,
-} commandPipeType;
-typedef enum commandType{
-  EXEC,
-  //  ASSIGN,
-  //  EXPORT,
-} commandType;
-typedef struct command{
+typedef enum commandType {
+  /** Run a command e.g. 'ls -la'. */
+  C_EXEC,
+  /** e.g. '|' or '|&' */
+  C_PIPE,
+  /** e.g. '2>&1' */
+  C_REDIRECT_FD_TO_FD,
+  /** e.g. '2>> file' */
+  C_REDIRECT_FD_TO_FILE,
+  /** e.g. '< file' */
+  C_REDIRECT_FILE_TO_FD,
+} command;
+typedef struct command {
   commandType type;
-  
-  char* name;
-  int argc;
-  char** argv;
 
-  commandPipeType pipeType;
+  /** This is a view of commandLine.src, don't free. */
+  char* src_start;
+  /** This is a view of commandLine.src, don't free.
+   * strlen( command ) == (src_next - src_start);   // src_next points next char or \0 of this command.
+   */
+  char* stc_next;
+  
+  /** Filename to exec or redirection (or NULL). */
+  char* file;
+  char** argv;
+  
+  /** -1 means NONE. */
+  int fd_lhs1;
+  /** If this command is '>&' or '|&', lhs1 is STDOUT and lhs2 is STDERR */
+  int fd_lhs2;
+  int fd_rhs;
+
+  struct command* prev;
   struct command* next;
 } command;
 
+typedef struct commandLine {
+  char* src;
 
-/** Parse command line.
- * @param str  Command line.
- *             This function will copy given string.
- */
-commandLine* commandLine_parse(const char* str);
+  struct command* head;
+} commandLine;
 
-
-
-typedef enum commandTokenType{
-  T_String,
-  T_Pipe,
-  T_NULL,
-} commandTokenType;
-typedef struct commandToken{
-  const char* str_start;
-  /** strlen(token) == (str_end - str_start); str_end points next of last char. */
-  const char* str_end;
-  const char* str_next;
-  
-  commandTokenType type;
-} commandToken;
-int readToken(const char* str, commandToken* t);
-command* command_parse(const char* str, commandToken* nextToken);
