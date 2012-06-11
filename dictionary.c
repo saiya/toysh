@@ -110,9 +110,9 @@ void _dic_resize(dictImpl* this, size_t slotCount){
   this->resizeThreshold = (size_t)(DEFAULT_LOAD_FACTOR * slotCount);
 
   pair** heads = malloc(sizeof(pair*) * slotCount);
-  memset(heads, 0, slotCount);
+  memset(heads, 0, sizeof(pair*) * slotCount);
   pair** tails = malloc(sizeof(pair*) * slotCount);
-  memset(tails, 0, slotCount);
+  memset(tails, 0, sizeof(pair*) * slotCount);
   
   size_t oldsc = this->slotCount;
   pair** oldslots = this->slots;
@@ -285,10 +285,12 @@ dictionary* dictionary_new(size_t slots){
   d->slotCount = INITIAL_SIZE;
   d->slots = malloc(sizeof(pair*) * d->slotCount);
   memset(d->slots, 0, sizeof(pair*) * d->slotCount);
+  d->resizeThreshold = (size_t)(DEFAULT_LOAD_FACTOR * d->slotCount);
 
   d->stat.lookups = 0;
   d->stat.lookupChains = 0;
   d->stat.resizes = 0;
+  d->stat.elements = 0;
   d->stat.buckets = -1;  // getStat() will update this.
   d->stat.toString = &dicStat_toString;
   

@@ -66,6 +66,7 @@ void test_random(){
   size_t nullBoth_at = (rand_r(&rnd) * entries) / RAND_MAX;
   myString* keys = malloc(entries * sizeof(myString));
   myString* vals = malloc(entries * sizeof(myString));
+  myString* vals2 = malloc(entries * sizeof(myString));
   for(size_t i = 0; i < entries; i++){
     while(1){
       if(i == nullVal_at){
@@ -78,6 +79,7 @@ void test_random(){
 	*(keys + i) = test_random_newRandStr(&rnd, -1);
 	*(vals + i) = test_random_newRandStr(&rnd, -1);
       }
+      *(vals2 + i) = test_random_newRandStr(&rnd, -1);
       
       // Retry if the key duplicates
       int unique = 1;
@@ -95,6 +97,7 @@ void test_random(){
       // Before retry...
       myString_free(keys + i);
       myString_free(vals + i);
+      myString_free(vals2 + i);
     }
   }
   
@@ -105,6 +108,7 @@ void test_random(){
   for(size_t i = 0; i < entries; i++){
     myString key = *(keys + i);
     myString val = *(vals + i);
+    myString val2 = *(vals2 + i);
 
     // Should not be found
     CU_ASSERT(dict->dup(dict, key.buff, key.len) == NULL);
@@ -126,6 +130,11 @@ void test_random(){
       }
     }
     free(tmpStr);
+
+    dict->set(dict, key.buff, key.len, val2.buff, val2.len);
+    tmpStr = dict->dup(dict, key.buff, key.len);
+    CU_ASSERT(strncmp(tmpStr, val2.buff, val2.len) == 0);
+    free(tmpStr);    
   }
 
   {
@@ -155,7 +164,9 @@ void test_random(){
   for(size_t i = 0; i < entries; i++){
     myString_free(keys + i);
     myString_free(vals + i);
+    myString_free(vals2 + i);
   }
   free(keys);
   free(vals);
+  free(vals2);
 }
