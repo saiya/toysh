@@ -27,7 +27,7 @@ toysh %
 
 === Purpose ===
 
-To pass the boring time.
+To pass the time.
 
 
 === Feature ===
@@ -38,3 +38,5 @@ To pass the boring time.
 - All GNU readline features
 -- Backlog (with up/down key)
 -- Cursor operations (C-a, C-e etc.)
+
+- Validated with Valgrind
