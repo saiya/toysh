@@ -22,7 +22,7 @@ void myString_free(myString* str){ free(str->buff); }
 
 #define test_random_strlen_max (100)
 #define test_random_entry_min (100)
-#define test_random_entry_max (300)
+#define test_random_entry_max (200)
 char test_randon_randChar(unsigned int* rnd, int is_printable){
   const static char printables[] = 
     " \t\r\n"

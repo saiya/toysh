@@ -7,6 +7,7 @@
 
 // Resize() trigger at: stat.elements > DEFAULT_LOAD_FACTOR * stat.buckets
 #define DEFAULT_LOAD_FACTOR (0.9f)
+#define INITIAL_SIZE (10)
 
 
 #if __x86_64__
@@ -140,6 +141,7 @@ void _dic_resize(dictImpl* this, size_t slotCount){
 void _dic_resize_auto(dictImpl* this){
   if(this->resizeThreshold >= this->stat.elements) return;
   
+  // FIXME: Use other policy ( nextPrime(slotCount) )
   size_t buckets = this->slotCount * 2;
   _dic_resize(this, buckets);
 }
@@ -280,7 +282,7 @@ char* dicStat_toString(const dictionaryStat* this){
 dictionary* dictionary_new(size_t slots){
   dictImpl* d = malloc(sizeof(dictImpl));
 
-  d->slotCount = 7;
+  d->slotCount = INITIAL_SIZE;
   d->slots = malloc(sizeof(pair*) * d->slotCount);
   memset(d->slots, 0, sizeof(pair*) * d->slotCount);
 
