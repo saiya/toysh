@@ -149,11 +149,11 @@ command* parse_command_exec(const char* cursor, state* state){
   result->file = NULL;
   size_t argc_len = 256;
   result->argc = 0;
-  result->argv = ALLOC_STR(state, argc_len * sizeof(char*));
+  result->argv = ALLOC_ANY(state, argc_len * sizeof(char*));
   
   char* str;
   while((str = parse_strunit(&cursor, state))){
-    if(result->argc >= argc_len){
+    if(result->argc + 1 >= argc_len){
       state->err = E_TOO_MANY_ARGS;
       return NULL;
     }
@@ -167,6 +167,7 @@ command* parse_command_exec(const char* cursor, state* state){
       result->argc++;
     }
   }
+  *(result->argv + result->argc) = NULL;
 
   result->src_next = cursor;
   return result;

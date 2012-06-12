@@ -13,122 +13,178 @@
 #include "dictionary.h"
 
 
-void commandHandle_freeSucc(commandHandle* this){
-  commandHandle* current = this;
-  while(current){
-    commandHandle* next = current->next;
-    free(current);
-    current = next;
+void commandLineHandle_wait(commandLineHandle* this){
+  for(size_t i = 0; i < this->procs; i++){
+    waitpid(*(this->pids + i), (this->codes + i), 0);
   }
 }
-int commandHandle_wait(commandHandle* this){
-  int result;
-  waitpid(this->pid, &result, 0);
-  return result;
+
+typedef struct{
+  pid_t pid;
+
+  int stdout;
+} procIO;
+procIO procIO_empty(){
+  procIO p;
+  p.pid = -1;
+  p.stdout = -1;
+  return p;
 }
-
-commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
-  /*
-  if(cmd->type != EXEC){
-    puts("Unknown type of command.");
-    return;
+procIO procIO_fail(){ return procIO_empty(); } 
+void procIO_closeAll(procIO p){
+  if(p.stdout != -1){
+    close(p.stdout);
   }
+}
+procIO toysh_start_exec(command* cmd, procIO former){
+  procIO result = procIO_empty();
+  int redirectionMap[100];
 
-  commandHandle* result = malloc(sizeof(commandHandle));
-  result->stdout_reader = -1;
-  result->wait = &commandHandle_wait;
-  result->freeSucc = &commandHandle_freeSucc;
-  result->prev = prev;
-  if(prev) prev->next = result;
-  result->next = NULL;
-
-  int stdout_redirect_to = -1;
-  if(cmd->next && cmd->next->pipeType == NormalPipe){
-    int p[2];
-    if(pipe(p) == -1){
-      puts("pipe() failed.");
-      return NULL;
-    }
+  command* pipe_cmd = NULL;
+  for(command* succ = cmd->next; succ; succ = succ->next){
+    int endOfSucc = 0;
+    switch(succ->type){
+    case C_PIPE: pipe_cmd = succ; break;
     
-    result->stdout_reader = p[0];
-    stdout_redirect_to = p[1];
+    case C_REDIRECT_FD_TO_FD:
+    case C_REDIRECT_FD_TO_FILE:
+    case C_REDIRECT_FILE_TO_FD:
+      break;
+
+    default: endOfSucc = 1; break;
+    }
+    if(endOfSucc) break;
   }
 
-  result->pid = fork();
-  switch(result->pid){
+  int pipe_fds[2];  // [reader, writer]
+  if(pipe_cmd){
+    if(pipe(pipe_fds) == -1){
+      puts("pipe() failed.");
+      return procIO_fail();
+    }
+    result.stdout = pipe_fds[0];
+  }
+  
+  result.pid = fork();
+  switch(result.pid){
   case -1:  // fork failure!
     puts("fork() failed.");
-    return NULL;
+    return procIO_fail();
 
   case 0:   // Child
-    if(result->stdout_reader != -1) close(result->stdout_reader);
-    if(cmd->pipeType == NormalPipe) dup2(prev->stdout_reader, 0);
-    if(stdout_redirect_to != -1) dup2(stdout_redirect_to, 1);
+    // Build redirection map of outputs.
+    for(int fd = 0; fd < 100; fd++){ redirectionMap[fd] = -1; }
+    if(former.stdout != -1){ // Initial valud of stdin sould be input pipe.
+      redirectionMap[STDIN_FILENO] = former.stdout;
+    }
+    if(pipe_cmd){  // Initial value of stdout should be output pipe.
+      if(pipe_cmd->fd_lhs1 != -1) redirectionMap[pipe_cmd->fd_lhs1] = pipe_fds[1];
+      if(pipe_cmd->fd_lhs2 != -1) redirectionMap[pipe_cmd->fd_lhs2] = pipe_fds[1];
+    }
+    for(command* succ = cmd->next; succ; succ = succ->next){
+      int endOfSucc = 0;
+      switch(succ->type){
+      case C_REDIRECT_FD_TO_FD:
+	if(succ->fd_lhs1 != -1) redirectionMap[succ->fd_rhs] = redirectionMap[succ->fd_lhs1];
+	if(succ->fd_lhs2 != -1) redirectionMap[succ->fd_rhs] = redirectionMap[succ->fd_lhs2];
+	break;
 
-    execvp(cmd->name, cmd->argv);
+      case C_REDIRECT_FD_TO_FILE:
+	puts("NOT IMPLEMENTED");
+	break;
+      case C_REDIRECT_FILE_TO_FD:
+	puts("NOT IMPLEMENTED");
+	break;
+      
+      default: endOfSucc = 1; break;
+      }
+      if(endOfSucc) break;
+    }
+
+    // Apply redirectionMap
+    for(int fd = 0; fd < 100; fd++){
+      if(redirectionMap[fd] != -1){
+	// printf("%s: dup2(%d, %d); // former.stdout: %d \n", cmd->file, redirectionMap[fd], fd, former.stdout);
+	dup2(redirectionMap[fd], fd);
+      }
+    }
+    if(former.stdout != -1){ close(former.stdout); }
+    if(pipe_cmd){ close(pipe_fds[0]); close(pipe_fds[1]); }
+
+    execvp(cmd->file, cmd->argv);
 
     // Error
-    printf("`%s` exec error (%d): %s\n", cmd->name, errno, strerror(errno));
+    printf("`%s` exec error (%d): %s\n", cmd->file, errno, strerror(errno));
     exit(EXIT_FAILURE);
 
   default:  // Parent
-    if(stdout_redirect_to != -1) close(stdout_redirect_to);
-    if(cmd->pipeType == NormalPipe) close(prev->stdout_reader);
-
+    if(pipe_cmd){ close(pipe_fds[1]); }
     return result;
-  }
-  */
+  }  
 }
-
-void toysh_run(const commandLine* cline){
-  /*
-  if(! cline->command) return;
+commandLineHandle* toysh_start(const commandLine* cl, pool* p){
+  commandLineHandle* h = p->alloc(p, O_Generic, sizeof(commandLine));
+  h->procs = 0;
+  h->pids = NULL;
+  h->codes = NULL;
+  h->wait = commandLineHandle_wait;
   
-  command* cmd = cline->command;
-  commandHandle* head = NULL;
-  commandHandle* current = NULL;
-  while(cmd != NULL){
-    commandHandle* next = toysh_command_run(current, cmd);
-    if(! next) break;  // Failed to run current command.
-    if(! head) head = next;
-    cmd = cmd->next;
-    current = next;
+  for(command* cmd = cl->head; cmd; cmd = cmd->next){
+    switch(cmd->type){
+    case C_EXEC:
+      h->procs++;
+      break;
+    default: continue;
+    }
   }
+  h->pids = p->alloc(p, O_Generic, h->procs * sizeof(pid_t));
+  h->codes = p->alloc(p, O_Generic, h->procs * sizeof(int));
 
-  for(current = head; current != NULL; current = current->next){
-    current->wait(current);
+  pid_t* p_pid = h->pids;
+  procIO proc = procIO_empty();
+  for(command* cmd = cl->head; cmd; cmd = cmd->next){
+    switch(cmd->type){
+    case C_INVALID: continue;
+
+    case C_PIPE:
+    case C_REDIRECT_FD_TO_FD:
+    case C_REDIRECT_FD_TO_FILE:
+    case C_REDIRECT_FILE_TO_FD:
+      continue;
+      
+    case C_EXEC:
+      {
+	procIO former = proc;
+	proc = toysh_start_exec(cmd, proc);
+	*p_pid = proc.pid;
+	p_pid++;
+	procIO_closeAll(former);
+	break;
+      }
+    }
   }
-  
-  head->freeSucc(head);
-  */
+  procIO_closeAll(proc);
+
+  return h;
 }
-
-
-
-
 
 void toysh(){
+  pool* p = pool_new();
+
   char *prompt = "toysh % "; // getenv("PS2");
   char *line = NULL;
   while((line = readline(prompt))){
-    /*
-    commandLine* cline = commandLine_parse(line);
+    commandLine* cl = parse(line, p);
     free(line);
 
-    if(! cline){
-      continue;
-    }
-
-    if(cline->command){
-      // cline->str is clean string, remember it.
-      add_history(cline->str);
-    }
+    if(! cl) continue;
     
-    toysh_run(cline);
-    
-    cline->free(cline);
-    */
+    add_history(cl->src);
+    commandLineHandle* h = toysh_start(cl, p);
+    h->wait(h);
   }
+
+  p->free(p);
 }
 int main(){
   toysh();
