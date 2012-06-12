@@ -67,8 +67,13 @@ commandLine* parse(const char* src, pool* pool){
 }
 
 command* parse_command(const char* cursor, state* state){
+  if(! skip_spaces(&cursor)) return NULL;
+  if(*cursor == ';'){
+    cursor++;
+    return parse_command(cursor, state);
+  }
+
   command* cmd;
-  
   if((cmd = parse_command_pipe(cursor, state))) return cmd;
   if((cmd = parse_command_redirect_in(cursor, state))) return cmd;
   if((cmd = parse_command_redirect_out(cursor, state))) return cmd;
@@ -283,6 +288,8 @@ int isspecial(char c){
   case '&':
   case '>':    
   case '<':
+  case ';':
+  case '#':
     return 1;
 
   default: return 0;
