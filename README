@@ -22,6 +22,14 @@ drwxr-xr-x 8 saiya saiya    4096 2012-06-08 19:20 .git
 -rw-r--r-- 1 saiya saiya     595 2012-06-08 18:01 toysh.h
 toysh % ls -la | wc
      11      82     581
+toysh % ls -l > tmp ; grep toysh < tmp
+-rwxr-xr-x 1 saiya saiya    42284 2012-06-12 17:16 toysh
+-rw-r--r-- 1 saiya saiya     4792 2012-06-12 17:04 toysh.c
+-rw-r--r-- 1 saiya saiya      508 2012-06-12 16:58 toysh.h
+-rw-r--r-- 1 saiya saiya    16128 2012-06-12 17:14 toysh.o
+-rwxr-xr-x 1 saiya saiya    48513 2012-06-12 17:16 toysh_test
+-rw-r--r-- 1 saiya saiya      262 2012-06-12 16:58 toysh_test.c
+-rw-r--r-- 1 saiya saiya     3736 2012-06-12 17:14 toysh_test.o
 toysh % 
 
 
