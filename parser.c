@@ -2,6 +2,7 @@
 #include <string.h>
 #include <assert.h>
 #include "parser.h"
+#include "parser_allocator.h"
 
 typedef enum{
   E_NONE,
@@ -16,10 +17,11 @@ typedef enum{
 typedef struct{
   parseError err;
 
-  void* (*allocator)(void* ctx, size_t size);
-  void* allocator_ctx;
+  pool* pool;
 } state;
-#define ALLOC(state, size) (state->allocator(state->allocator_ctx, size))
+#define ALLOC_ANY(state, size) (state->pool->alloc(state->pool, O_Generic, size))
+#define ALLOC_CMD(state, size) (state->pool->alloc(state->pool, O_Command, size))
+#define ALLOC_STR(state, size) (state->pool->alloc(state->pool, O_String, size))
 
 command* parse_command(const char* cursor, state* state);
 command* parse_command_pipe(const char* cursor, state* state);
@@ -31,15 +33,14 @@ char unsecape(char c);
 int skip_spaces(const char** cursor);
 int read_num(const char** cursor, int* num);
 
-commandLine* parse(const char* src, void* (*allocator)(void* ctx, size_t size), void* allocator_ctx){
+commandLine* parse(const char* src, pool* pool){
   state s_;
   state* s = &s_;
-  s->allocator = allocator;
-  s->allocator_ctx = allocator_ctx;
+  s->pool = pool;
   s->err = E_NONE;
 
-  commandLine* result = ALLOC(s, sizeof(commandLine));
-  result->src = ALLOC(s, strlen(src) + 1);
+  commandLine* result = ALLOC_ANY(s, sizeof(commandLine));
+  result->src = ALLOC_STR(s, strlen(src) + 1);
   strncpy(result->src, src, strlen(src) + 1);
   result->head = NULL;
   result->last = NULL;
@@ -88,7 +89,7 @@ command* parse_command_pipe(const char* cursor, state* state){
     cursor++;
   }
   
-  command* result = ALLOC(state, sizeof(command));
+  command* result = ALLOC_CMD(state, sizeof(command));
   result->src_start = src_start;
   result->src_next = cursor;
   result->type = C_PIPE;
@@ -128,7 +129,7 @@ command* parse_command_redirect(const char* cursor, state* state){
     }
   }
   
-  command* result = ALLOC(state, sizeof(command));
+  command* result = ALLOC_CMD(state, sizeof(command));
   result->src_start = src_start;
   result->src_next = cursor;
   result->type = type;
@@ -141,14 +142,14 @@ command* parse_command_redirect(const char* cursor, state* state){
 command* parse_command_exec(const char* cursor, state* state){
   if(! skip_spaces(&cursor)) return NULL;
 
-  command* result = ALLOC(state, sizeof(command));
+  command* result = ALLOC_CMD(state, sizeof(command));
   result->type = C_EXEC;
   result->src_start = cursor;
 
   result->file = NULL;
   size_t argc_len = 256;
   result->argc = 0;
-  result->argv = ALLOC(state, argc_len * sizeof(char*));
+  result->argv = ALLOC_STR(state, argc_len * sizeof(char*));
   
   char* str;
   while((str = parse_strunit(&cursor, state))){
@@ -221,7 +222,7 @@ char* parse_strunit(const char** cursor, state* state){
 
   // Copy [start, end)
   // If (type != '\''), process escpape sequence.
-  char* result = ALLOC(state, end - start + 1);
+  char* result = ALLOC_STR(state, end - start + 1);
   {
     char* rc_max = result + (end - start);
     char* rc = result;

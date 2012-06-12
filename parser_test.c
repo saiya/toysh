@@ -5,12 +5,6 @@
 #include "parser_test.h"
 #include "parser.h"
 
-
-void* allocator(void* ctx, size_t size){
-  return malloc(size);
-}
-
-
 void test();
 CU_pSuite parser_test_new(){
   CU_pSuite suite = CU_add_suite("parser", NULL, NULL);
@@ -31,13 +25,16 @@ char* commandTypeToString(commandType type){
   return NULL;
 }
 void test(){
-  commandLine* cl = parse("ls -la |& wc > /dev/null", &allocator, NULL);
+  pool* pool = pool_new();
+
+  commandLine* cl = parse("ls -la |& wc > /dev/null", pool);
   CU_ASSERT(cl != NULL);
 
   command* ls = cl->head; CU_ASSERT(ls != NULL);
   command* pipe = ls->next; CU_ASSERT(pipe != NULL);
   command* wc = pipe->next; CU_ASSERT(wc != NULL);
   command* redirect = wc->next; CU_ASSERT(redirect != NULL);
+  CU_ASSERT(cl->last == redirect);
   CU_ASSERT(redirect->next == NULL);
 
   CU_ASSERT(ls->type == C_EXEC);
@@ -59,5 +56,7 @@ void test(){
   CU_ASSERT(redirect->fd_lhs1 == FD_STDOUT);
   CU_ASSERT(redirect->fd_lhs2 == FD_NONE);
   CU_ASSERT(strcmp(redirect->file, "/dev/null") == 0);
+
+  pool->free(pool);
 }
 

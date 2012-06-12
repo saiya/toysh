@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unistd.h>
+#include "parser_allocator.h"
 
 #define FD_NONE -1
 #define FD_STDOUT STDOUT_FILENO
@@ -53,4 +54,4 @@ typedef struct commandLine {
   struct command* last;
 } commandLine;
 
-commandLine* parse(const char* src, void* (*allocator)(void* ctx, size_t size), void* allocator_ctx);
+commandLine* parse(const char* src, pool* pool);

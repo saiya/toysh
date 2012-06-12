@@ -2,7 +2,7 @@
 
 OUT_TOYSH	= toysh
 OUT_TEST	= toysh_test
-OBJS		= parser.o dictionary.o
+OBJS		= parser.o parser_allocator.o dictionary.o
 OBJS_TOYSH	= toysh.o $(OBJS)
 OBJS_TEST	= toysh_test.o $(OBJS) dictionary_test.o parser_test.o
 
