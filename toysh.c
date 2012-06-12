@@ -174,12 +174,22 @@ commandLineHandle* toysh_start(const commandLine* cl, pool* p){
   return h;
 }
 
+char* readline_wrapper(const char* prompt){
+#ifdef _READLINE_H_
+  return readline(prompt);
+#else
+  printf("%s", prompt);
+  char* buff = malloc(1024);
+  return fgets(buff, 1024, stdin);
+#endif
+}
+
 void toysh(){
   pool* p = pool_new();
 
   char *prompt = "\e[1;34m""toysh % ""\e[0m"; // getenv("PS2");
   char *line = NULL;
-  while((line = readline(prompt))){
+  while((line = readline_wrapper(prompt))){
     commandLine* cl = parse(line, p);
     free(line);
 
