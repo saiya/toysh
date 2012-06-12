@@ -4,7 +4,7 @@ OUT_TOYSH	= toysh
 OUT_TEST	= toysh_test
 OBJS		= parser.o dictionary.o
 OBJS_TOYSH	= toysh.o $(OBJS)
-OBJS_TEST	= toysh_test.o $(OBJS) dictionary_test.o
+OBJS_TEST	= toysh_test.o $(OBJS) dictionary_test.o parser_test.o
 
 CC	= gcc
 #	-lefence	# Use Valgrind to detect memory leakage or access violation

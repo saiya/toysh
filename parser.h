@@ -1,6 +1,15 @@
 #pragma once
 
+#include <unistd.h>
+
+#define FD_NONE -1
+#define FD_STDOUT STDOUT_FILENO
+#define FD_STDIN STDIN_FILENO
+#define FD_STDERR STDERR_FILENO
+
 typedef enum commandType {
+  C_INVALID,
+
   /** Run a command e.g. 'ls -la'. */
   C_EXEC,
   /** e.g. '|' or '|&' */
@@ -11,19 +20,20 @@ typedef enum commandType {
   C_REDIRECT_FD_TO_FILE,
   /** e.g. '< file' */
   C_REDIRECT_FILE_TO_FD,
-} command;
+} commandType;
 typedef struct command {
   commandType type;
 
   /** This is a view of commandLine.src, don't free. */
-  char* src_start;
+  const char* src_start;
   /** This is a view of commandLine.src, don't free.
    * strlen( command ) == (src_next - src_start);   // src_next points next char or \0 of this command.
    */
-  char* stc_next;
+  const char* src_next;
   
   /** Filename to exec or redirection (or NULL). */
   char* file;
+  size_t argc;
   char** argv;
   
   /** -1 means NONE. */
@@ -40,5 +50,7 @@ typedef struct commandLine {
   char* src;
 
   struct command* head;
+  struct command* last;
 } commandLine;
 
+commandLine* parse(const char* src, void* (*allocator)(void* ctx, size_t size), void* allocator_ctx);

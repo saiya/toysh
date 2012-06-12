@@ -28,6 +28,7 @@ int commandHandle_wait(commandHandle* this){
 }
 
 commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
+  /*
   if(cmd->type != EXEC){
     puts("Unknown type of command.");
     return;
@@ -76,9 +77,11 @@ commandHandle* toysh_command_run(commandHandle* prev, const command* cmd){
 
     return result;
   }
+  */
 }
 
 void toysh_run(const commandLine* cline){
+  /*
   if(! cline->command) return;
   
   command* cmd = cline->command;
@@ -97,6 +100,7 @@ void toysh_run(const commandLine* cline){
   }
   
   head->freeSucc(head);
+  */
 }
 
 
@@ -107,6 +111,7 @@ void toysh(){
   char *prompt = "toysh % "; // getenv("PS2");
   char *line = NULL;
   while((line = readline(prompt))){
+    /*
     commandLine* cline = commandLine_parse(line);
     free(line);
 
@@ -122,6 +127,7 @@ void toysh(){
     toysh_run(cline);
     
     cline->free(cline);
+    */
   }
 }
 int main(){
