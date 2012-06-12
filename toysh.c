@@ -177,7 +177,7 @@ commandLineHandle* toysh_start(const commandLine* cl, pool* p){
 void toysh(){
   pool* p = pool_new();
 
-  char *prompt = "toysh % "; // getenv("PS2");
+  char *prompt = "\e[1;34m""toysh % ""\e[0m"; // getenv("PS2");
   char *line = NULL;
   while((line = readline(prompt))){
     commandLine* cl = parse(line, p);
