@@ -25,7 +25,8 @@ typedef struct{
 
 command* parse_command(const char* cursor, state* state);
 command* parse_command_pipe(const char* cursor, state* state);
-command* parse_command_redirect(const char* cursor, state* state);
+command* parse_command_redirect_in(const char* cursor, state* state);
+command* parse_command_redirect_out(const char* cursor, state* state);
 command* parse_command_exec(const char* cursor, state* state);
 char* parse_strunit(const char** cursor, state* state);
 int isspecial(char c);
@@ -69,7 +70,8 @@ command* parse_command(const char* cursor, state* state){
   command* cmd;
   
   if((cmd = parse_command_pipe(cursor, state))) return cmd;
-  if((cmd = parse_command_redirect(cursor, state))) return cmd;
+  if((cmd = parse_command_redirect_in(cursor, state))) return cmd;
+  if((cmd = parse_command_redirect_out(cursor, state))) return cmd;
   if((cmd = parse_command_exec(cursor, state))) return cmd;
   
   return NULL;
@@ -98,7 +100,33 @@ command* parse_command_pipe(const char* cursor, state* state){
   result->fd_rhs = FD_STDIN;
   return result;
 }
-command* parse_command_redirect(const char* cursor, state* state){
+command* parse_command_redirect_in(const char* cursor, state* state){
+  if(! skip_spaces(&cursor)) return NULL;
+  
+  int fd_rhs = FD_NONE;
+  if(! read_num(&cursor, &fd_rhs)) fd_rhs = FD_NONE;
+
+  if(*cursor != '<') return NULL;  // This is not redirection.
+  if(fd_rhs == FD_NONE) fd_rhs = FD_STDIN;
+  const char* src_start = cursor;
+  cursor++;
+
+  char* file = NULL;
+  if(! (file = parse_strunit(&cursor, state))){
+    return NULL;
+  }
+  
+  command* result = ALLOC_CMD(state, sizeof(command));
+  result->src_start = src_start;
+  result->src_next = cursor;
+  result->type = C_REDIRECT_FILE_TO_FD;
+  result->file = file;
+  result->fd_lhs1 = -1;
+  result->fd_lhs2 = -1;
+  result->fd_rhs = fd_rhs;
+  return result;
+}
+command* parse_command_redirect_out(const char* cursor, state* state){
   if(! skip_spaces(&cursor)) return NULL;
   
   int fd_lhs1 = FD_NONE;

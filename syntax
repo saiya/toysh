@@ -11,7 +11,7 @@ command		<- command_exec
 		# C_REDIRECT_FD_TO_FILE
 		\ ([0-9]*) '>' strunit
 		# C_REDIRECT_FILE_TO_FD
-		\ '<' strunit
+		\ ([0-9]*) '<' strunit
 
 command_exec	<- strunit ... '&'?
 

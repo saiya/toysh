@@ -81,6 +81,7 @@ procIO toysh_start_exec(command* cmd, procIO former){
       if(pipe_cmd->fd_lhs1 != -1) redirectionMap[pipe_cmd->fd_lhs1] = pipe_fds[1];
       if(pipe_cmd->fd_lhs2 != -1) redirectionMap[pipe_cmd->fd_lhs2] = pipe_fds[1];
     }
+
     for(command* succ = cmd->next; succ; succ = succ->next){
       int endOfSucc = 0;
       switch(succ->type){
@@ -89,12 +90,17 @@ procIO toysh_start_exec(command* cmd, procIO former){
 	if(succ->fd_lhs2 != -1) redirectionMap[succ->fd_rhs] = redirectionMap[succ->fd_lhs2];
 	break;
 
-      case C_REDIRECT_FD_TO_FILE:
-	puts("NOT IMPLEMENTED");
+      case C_REDIRECT_FD_TO_FILE: {
+	FILE* file = fopen(succ->file, "w");
+	if(succ->fd_lhs1 != -1) redirectionMap[succ->fd_lhs1] = fileno(file);
+	if(succ->fd_lhs2 != -1) redirectionMap[succ->fd_lhs2] = fileno(file);
 	break;
-      case C_REDIRECT_FILE_TO_FD:
-	puts("NOT IMPLEMENTED");
+      }
+      case C_REDIRECT_FILE_TO_FD: {
+	FILE* file = fopen(succ->file, "r");
+	if(succ->fd_rhs != -1) redirectionMap[succ->fd_rhs] = fileno(file);
 	break;
+      }
       
       default: endOfSucc = 1; break;
       }
