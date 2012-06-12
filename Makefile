@@ -9,7 +9,7 @@ OBJS_TEST	= toysh_test.o $(OBJS) dictionary_test.o parser_test.o
 CC	= gcc
 #	-lefence	# Use Valgrind to detect memory leakage or access violation
 FLAGS	= \
-	-lreadline \
+	-lcurses -lreadline \
 	-Wall \
 	-g -ggdb \
 	-std=c99 -D_GNU_SOURCE
